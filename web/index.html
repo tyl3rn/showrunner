@@ -72,13 +72,38 @@
 <h2>Generate</h2>
 <form id="genform">
   <label>subreddit
-    <input id="subreddit" value="auto" size="16" spellcheck="false">
+    <select id="subselect">
+      <option value="auto" selected>auto (rotate pool)</option>
+      <option value="TrueOffMyChest">TrueOffMyChest</option>
+      <option value="confession">confession</option>
+      <option value="confessions">confessions</option>
+      <option value="AmItheAsshole">AmItheAsshole</option>
+      <option value="AITAH">AITAH</option>
+      <option value="tifu">tifu</option>
+      <option value="nosleep">nosleep</option>
+      <option value="LetsNotMeet">LetsNotMeet</option>
+      <option value="AskReddit">AskReddit</option>
+      <option value="offmychest">offmychest</option>
+      <option value="TwoHotTakes">TwoHotTakes</option>
+      <option value="pettyrevenge">pettyrevenge</option>
+      <option value="ProRevenge">ProRevenge</option>
+      <option value="MaliciousCompliance">MaliciousCompliance</option>
+      <option value="entitledparents">entitledparents</option>
+      <option value="Glitch_in_the_Matrix">Glitch_in_the_Matrix</option>
+      <option value="custom">custom...</option>
+    </select>
+  </label>
+  <label id="customwrap" hidden>custom subreddit
+    <input id="subreddit" size="16" spellcheck="false" placeholder="name only, no r/">
   </label>
   <label>time window
     <select id="timefilter">
+      <option value="hour">hour</option>
       <option value="day" selected>day</option>
       <option value="week">week</option>
       <option value="month">month</option>
+      <option value="year">year</option>
+      <option value="all">all time</option>
     </select>
   </label>
   <label>max videos
@@ -110,14 +135,21 @@ async function api(path, opts) {
   return res.json();
 }
 
+$("subselect").addEventListener("change", () => {
+  $("customwrap").hidden = $("subselect").value !== "custom";
+  if (!$("customwrap").hidden) $("subreddit").focus();
+});
+
 $("genform").addEventListener("submit", async e => {
   e.preventDefault();
+  const sel = $("subselect").value;
+  const sub = sel === "custom" ? ($("subreddit").value.trim() || "auto") : sel;
   try {
     await api("/api/generate", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        subreddit: $("subreddit").value.trim() || "auto",
+        subreddit: sub,
         time_filter: $("timefilter").value,
         max_videos: parseInt($("maxvideos").value, 10),
         min_score: parseInt($("minscore").value, 10),
