@@ -128,7 +128,7 @@ def main():
     ap.add_argument("text_file", help="plain text file, e.g. story.txt from reddit_fetch.py")
     ap.add_argument("--voice", default="random-male",
                     help="'random-male' shuffles between US male voices; or name one explicitly (`edge-tts --list-voices`)")
-    ap.add_argument("--rate", default="+50%", help="speech rate adjustment; +50%% = 1.5x speed")
+    ap.add_argument("--rate", default="+33%", help="speech rate adjustment; +33%% = 1.33x speed")
     ap.add_argument("--words-per-caption", type=int, default=1,
                     help="words shown at once (0 = random 1-2)")
     ap.add_argument("--out-audio", default="narration.mp3")

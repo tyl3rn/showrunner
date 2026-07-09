@@ -328,6 +328,18 @@ def main():
     ap.add_argument("--out", default="story.txt")
     args = ap.parse_args()
 
+    # Fail fast: the Claude call happens AFTER ~9 minutes of rate-limited
+    # reddit crawling -- don't start that crawl if we can't score at the end.
+    import os
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print(
+            "ANTHROPIC_API_KEY is not set in this terminal.\n"
+            "Fix: open a NEW terminal (the key is saved user-level), or run:\n"
+            '  $env:ANTHROPIC_API_KEY = [Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY","User")',
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     seen_path = Path(args.seen_file)
     seen_ids = set(json.loads(seen_path.read_text(encoding="utf-8"))) if seen_path.exists() else set()
 

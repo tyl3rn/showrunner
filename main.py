@@ -41,7 +41,7 @@ def main():
     ap.add_argument("--listing", default="top", choices=["top", "hot", "new", "controversial"])
     ap.add_argument("--time-filter", default="day", choices=["hour", "day", "week", "month", "year", "all"])
     ap.add_argument("--voice", default="random-male")
-    ap.add_argument("--rate", default="+50%")
+    ap.add_argument("--rate", default="+33%")
     ap.add_argument("--words-per-caption", type=int, default=1, help="words shown at once (0 = random 1-2)")
     ap.add_argument("--workdir", default="run_output", help="where intermediate files land")
     ap.add_argument("--out-dir", default=None, help="where the finished video lands (default: workdir)")
