@@ -62,6 +62,10 @@ COMMENT_DRIVEN_SUBS = {"askreddit"}
 # tradeoff for scoring ~25 stories twice a day.
 MODEL = "claude-sonnet-5"
 
+# The ending doctor is the one creative-writing call in the pipeline, and it
+# runs once per posted story -- Opus's stronger prose is worth the pennies.
+DOCTOR_MODEL = "claude-opus-4-8"
+
 # How many comments per candidate to show the judge. Top 6 is plenty of
 # signal without bloating the prompt.
 COMMENTS_PER_POST = 6
@@ -260,7 +264,8 @@ def punch_up_ending(winner: dict, flagged: bool) -> str:
         "The curator thinks the ending is fine -- only rewrite if you strongly disagree."
     )
     response = client.messages.parse(
-        model=MODEL,
+        model=DOCTOR_MODEL,
+        thinking={"type": "adaptive"},
         # Generous cap: adaptive thinking shares this budget, and twist-
         # crafting is think-heavy. Unused headroom costs nothing.
         max_tokens=12000,
