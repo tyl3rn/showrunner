@@ -248,20 +248,26 @@ def score_candidates(candidates) -> Scorecard:
     return response.parsed_output
 
 
-class EndingRewrite(BaseModel):
-    rewrote: bool = Field(description="true if the ending was changed")
-    story: str = Field(description="the full story body, with the punched-up ending if rewritten, otherwise unchanged")
+class ScriptPolish(BaseModel):
+    rewrote_ending: bool = Field(description="true if the ending was changed")
+    spoken_title: str = Field(description=(
+        "the title as the narrator should SAY it: abbreviations expanded "
+        "(AITAH -> 'am I the asshole', TIFU -> 'today I messed up'), times/"
+        "numbers in spoken form, platform-safe vocabulary. Same meaning and "
+        "roughly same length as the original title."
+    ))
+    story: str = Field(description="the full polished story body, ending punched up if it was flat")
 
 
-def punch_up_ending(winner: dict, flagged: bool) -> str:
-    """Script doctor: if the ending is flat, replace the final stretch with
-    something that lands -- a twist, a reveal, a WTF beat. The hook and body
-    stay; only the landing changes."""
+def script_doctor(winner: dict, flagged: bool) -> ScriptPolish:
+    """One Opus pass that turns the raw reddit text into a narration script:
+    Black Mirror ending if the original fizzles, broken English smoothed,
+    abbreviations expanded for speech, TikTok-safe vocabulary."""
     client = anthropic.Anthropic()
     hint = (
         "The curator flagged this story's ending as flat -- rewrite it."
         if flagged else
-        "The curator thinks the ending is fine -- only rewrite if you strongly disagree."
+        "The curator thinks the ending is fine -- only rewrite it if you strongly disagree."
     )
     response = client.messages.parse(
         model=DOCTOR_MODEL,
@@ -271,38 +277,51 @@ def punch_up_ending(winner: dict, flagged: bool) -> str:
         max_tokens=12000,
         system=(
             "You are the script doctor for a shorts channel narrating Reddit "
-            "stories. Your one job: the ending must hit like a BLACK MIRROR "
-            "TWIST -- an unexpected final reveal that recontextualizes "
-            "everything the viewer just heard and leaves them in stunned "
-            "'WTF did I just watch' silence, then scrambling to the comments. "
-            "The last line IS the twist, stated flatly. No moralizing after "
-            "it, no reflection, no wrap-up sentence.\n\n"
-            "HARD RULES:\n"
-            "- NEVER end on a question to the audience ('so AITA?', 'was I "
-            "wrong?', 'has anyone else experienced this?'). If the original "
-            "ends that way, cut the question even if you change nothing else.\n"
-            "- The twist must feel seeded by the story -- a detail mentioned "
-            "earlier gains sinister/absurd new meaning. You may plant one "
-            "small detail earlier to make the twist land, but keep the body "
-            "otherwise intact.\n"
-            "- Keep the first-person reddit voice; stay within +-15% of the "
-            "original length; plausible enough not to read as fiction.\n"
-            "- Nothing sexually explicit, nothing unsafe involving minors.\n"
-            "If the original ending already delivers a genuine shock-twist, "
-            "keep it (but still strip any trailing audience-question)."
+            "stories aloud over gameplay footage. You turn raw reddit text "
+            "into a NARRATION SCRIPT. Four jobs, in order of importance:\n\n"
+            "1. THE ENDING must hit like a BLACK MIRROR TWIST -- an "
+            "unexpected final reveal that recontextualizes everything the "
+            "viewer just heard and leaves them stunned, then scrambling to "
+            "the comments. The last line IS the twist, stated flatly -- no "
+            "moralizing, no reflection, no wrap-up after it. NEVER end on a "
+            "question to the audience ('so am I the asshole?', 'has anyone "
+            "else experienced this?') -- cut such closers even if you change "
+            "nothing else. The twist must feel seeded by the story; you may "
+            "plant one small detail earlier so it lands. If the original "
+            "ending already delivers a genuine shock-twist, keep it.\n\n"
+            "2. MAKE IT SOUND SPOKEN. Smooth broken English and awkward "
+            "grammar into natural, conversational American English -- keep "
+            "the first-person voice, personality, and every story detail, "
+            "just make it flow when read aloud. Expand anything a narrator "
+            "shouldn't say as letters: 'AITAH' -> 'am I the asshole', 'TIFU' "
+            "-> 'today I messed up', 'OP' -> 'the original poster', '24M' -> "
+            "'a 24 year old guy'. Convert times and numbers to spoken form: "
+            "'1800' -> '6pm', '$1.5k' -> 'fifteen hundred dollars'.\n\n"
+            "3. PLATFORM-SAFE VOCABULARY (TikTok community guidelines). "
+            "Replace flagged words with the genre's standard substitutes so "
+            "the video doesn't get taken down, keeping it natural: kill/"
+            "killed -> 'unalive'/'unalived', suicide -> 'unalived "
+            "themselves', died -> 'passed away' or 'didn't make it', gun -> "
+            "'weapon', drugs or specific drug names -> 'substances'/'stuff' "
+            "(pick what reads naturally in context), sexual assault -> 'SA'. "
+            "Use judgment for other risky terms; the audience knows this "
+            "code and it should not feel forced.\n\n"
+            "4. CONSTRAINTS: stay within +-15% of the original length; "
+            "plausible enough not to read as fiction; nothing sexually "
+            "explicit, nothing unsafe involving minors."
         ),
         messages=[{
             "role": "user",
             "content": f"{hint}\n\nTitle: {winner['title']}\n\nStory:\n{winner['body']}",
         }],
-        output_format=EndingRewrite,
+        output_format=ScriptPolish,
     )
     result = response.parsed_output
-    if result.rewrote:
-        print("Ending doctor: rewrote the landing.")
-        return result.story.strip()
-    print("Ending doctor: original ending kept.")
-    return winner["body"]
+    result.story = result.story.strip()
+    result.spoken_title = result.spoken_title.strip().rstrip(".")
+    print("Script doctor: ending rewritten." if result.rewrote_ending
+          else "Script doctor: original ending kept.")
+    return result
 
 
 def generate_upload_copy(winner: dict) -> UploadCopy:
@@ -420,16 +439,18 @@ def main():
         seen_ids.add(winner["id"])
 
         print(f"\n[{rank}/{len(qualifying)}] '{winner['title'][:70]}' ({score.overall}/100)")
-        print("  Running the ending doctor...")
-        doctored = punch_up_ending(winner, score.needs_ending_fix)
-        ending_rewritten = doctored != winner["body"]
-        winner["body"] = doctored
+        print("  Running the script doctor...")
+        polish = script_doctor(winner, score.needs_ending_fix)
+        winner["body"] = polish.story
 
         out_txt = base.with_name(f"{base.stem}-{rank}.txt")
-        out_txt.write_text(f"{winner['title']}. {winner['body']}", encoding="utf-8")
+        # The narrator reads spoken_title; the card graphic shows the
+        # original title (visual authenticity vs. speakability).
+        out_txt.write_text(f"{polish.spoken_title}. {winner['body']}", encoding="utf-8")
         meta = {k: v for k, v in winner.items() if k not in ("body", "comments")}
+        meta["spoken_title"] = polish.spoken_title
         meta["curation"] = score.model_dump()
-        meta["ending_rewritten"] = ending_rewritten
+        meta["ending_rewritten"] = polish.rewrote_ending
         out_txt.with_suffix(".meta.json").write_text(
             json.dumps(meta, indent=2), encoding="utf-8"
         )

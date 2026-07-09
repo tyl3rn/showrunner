@@ -95,7 +95,9 @@ def main():
             sys.executable, str(HERE / "narrate.py"), str(story),
             "--voice", args.voice, "--rate", args.rate,
             "--words-per-caption", str(args.words_per_caption),
-            "--title", meta["title"], "--out-timing", str(timing_json),
+            # The narrator speaks the polished title; the card shows the raw one.
+            "--title", meta.get("spoken_title", meta["title"]),
+            "--out-timing", str(timing_json),
             "--out-audio", str(narration), "--out-captions", str(captions),
         ])
 
