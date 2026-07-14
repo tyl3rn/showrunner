@@ -211,7 +211,8 @@ the browser loses nothing.
 
 The console with two videos in the library. Under each one: the TikTok
 caption with a copy button, the 1-5 rating row with a note field for the
-judge, and the stats inputs that feed the judge-vs-reality table up top.
+judge, and the stats inputs. Once videos have stats, a judge-vs-reality
+table with the correlations appears above the library.
 
 ## Files it writes
 
