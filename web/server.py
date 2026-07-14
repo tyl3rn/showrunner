@@ -50,7 +50,7 @@ STAGE_MARKERS = [
     ("Fetching candidates", "crawling reddit"),
 ]
 
-app = FastAPI(title="automated-shorts console")
+app = FastAPI(title="showrunner console")
 _job: dict = {"proc": None, "params": None, "started": None}
 
 
